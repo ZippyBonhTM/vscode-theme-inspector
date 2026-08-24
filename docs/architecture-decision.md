@@ -48,16 +48,20 @@ still unstable; this will be revisited before any npm publish.
 
 ## Node.js baseline
 
-The workspace targets Node.js `>=20` (`engines.node` in the root
-`package.json`, enforced via `.npmrc`'s `engine-strict=true`). `@types/node`
-is pinned to `^20` to match that floor rather than the locally installed
-runtime, so the type-checker doesn't assume APIs only available on newer
-Node majors. CI (`.github/workflows/ci.yml`) runs on Node.js `20` for the
-same reason — it validates against the declared minimum, not whatever is
-newest. Locally, Node.js `v24.19.0` LTS was installed during this bootstrap
-(the environment had no Node.js installed beforehand) since it was the
-current LTS at the time; this is a dev-machine convenience and does not
-change the declared floor.
+The workspace targets Node.js `>=22` (`engines.node` in the root
+`package.json`, enforced via `.npmrc`'s `engine-strict=true`). This floor
+was not chosen upfront: it was discovered by evidence. `>=20` was tried
+first, but with `engine-strict=true`, `npm ci` on CI (Node 20) failed
+because several devDependencies declare a stricter `engines.node`:
+`eslint-config-prettier`, `@vscode/test-cli`, and `@vscode/test-electron`
+all require `node >=22`. The floor was raised to `>=22` to match what the
+toolchain actually requires, `@types/node` was re-pinned to `^22` to match,
+and CI (`.github/workflows/ci.yml`) was updated to run on Node.js `22` — CI
+validates against the declared minimum, not whatever is newest. Locally,
+Node.js `v24.19.0` LTS was installed during this bootstrap (the environment
+had no Node.js installed beforehand) since it was the current LTS at the
+time; this is a dev-machine convenience and does not change the declared
+floor.
 
 ## VS Code baseline
 
