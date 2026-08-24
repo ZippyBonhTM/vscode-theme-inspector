@@ -1,0 +1,12 @@
+dist
+out
+coverage
+.vscode-test
+node_modules
+package-lock.json
+*.vsix
+
+# Pre-existing planning documents — not ours to reformat.
+CLAUDE.md
+docs/bootstrap-plan.md
+docs/implementation-plan.md
