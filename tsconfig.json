@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@vscode-theme-inspector/core": ["packages/core/src/index.ts"]
+    },
+    "types": ["node", "vscode", "mocha"]
+  },
+  "include": ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts"]
+}
