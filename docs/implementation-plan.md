@@ -4,6 +4,58 @@
 
 ---
 
+# 0. Amendment — Modelo de interação de dois modos (pós-bootstrap)
+
+**Esta seção corrige a interpretação inicial do produto. O restante deste
+documento (seções 1+) é o plano original e deve ser lido à luz desta
+correção — em especial as seções 14 e 15, que discutem "Selecionar
+elemento" de um jeito que este amendment torna concreto.**
+
+A experiência principal do Theme Inspector é um **inspetor visual por
+hover**, não a interface de categorias/busca (essa continua existindo,
+como segunda forma de uso). O produto final oferece dois modos:
+
+1. **Hover Inspector (modo principal)** — `Theme Inspector: Turn On`
+   ativa a inspeção por hover: mover o mouse sobre qualquer região do
+   Workbench identifica visualmente o elemento sob o cursor, destaca a
+   região e mostra Theme Color ID, CSS variable, computed style, cor
+   resolvida, fonte, confidence e o JSON de `workbench.colorCustomizations`
+   correspondente. Clique fixa a inspeção. `Theme Inspector: Turn Off`
+   desativa completamente, sem deixar highlight ou efeito colateral.
+2. **Theme Color Explorer (modo complementar, já implementado)** — a
+   interface de busca/categorias existente
+   (`InspectorViewProvider`/`packages/theme-colors`), acessível via
+   `Theme Color Explorer` na Activity Bar ou pelo comando
+   `Theme Inspector: Open Theme Color Explorer`, disponível
+   independentemente do estado ON/OFF do Hover Inspector.
+
+**Descoberta técnica crítica**: não existe API pública da extensão que dê
+acesso ao DOM do Workbench (confirmado em
+[ADR 0004](adr/0004-inspector-strategy.md)). O Hover Inspector só é
+tecnicamente viável através do **Chrome DevTools Protocol (CDP)**,
+conectando-se ao renderer do Workbench via a flag `--remote-debugging-port`
+— um mecanismo interno/não suportado pela Extension API, mas explicitamente
+permitido pelo próprio código-fonte do VS Code
+(`SUPPORTED_ELECTRON_SWITCHES` em `src/main.ts`) para uso via `argv.json`.
+Isso foi validado empiricamente (não apenas pesquisado) nesta sessão — ver
+[ADR 0005](adr/0005-hover-inspector-strategy.md) para a investigação
+completa, incluindo os riscos de segurança (porta de debug local expõe
+execução arbitrária de JavaScript no Workbench), a necessidade de reiniciar
+o VS Code por completo (não apenas "Reload Window"), e a indisponibilidade
+em VS Code para Web/Codespaces.
+
+Comandos do Command Palette (nomes sujeitos a ajuste fino, intenção fixa):
+
+- `Theme Inspector: Turn On`
+- `Theme Inspector: Turn Off`
+- `Theme Inspector: Open Theme Color Explorer`
+- (opcional) `Theme Inspector: Toggle Inspector`
+
+Estado: `OFF → Turn On → ON (Hover Inspector ativo) → Turn Off → OFF`,
+controlado pelo sistema de comandos da extensão.
+
+---
+
 # 1. Visão do projeto
 
 Construir um projeto open source para inspeção, análise e customização de temas do Visual Studio Code.
@@ -532,6 +584,11 @@ Só então escolher.
 ---
 
 # 15. MVP
+
+> Ver seção 0 (Amendment). "Selecionar elemento" abaixo é literal: hover
+> real sobre o Workbench via CDP (ADR 0005), não busca por categoria. A
+> busca por categoria é o Theme Color Explorer, um fluxo MVP separado que
+> já existe e não é substituído por este.
 
 O MVP deve fazer:
 
@@ -1498,6 +1555,11 @@ quando possível.
 ---
 
 # 60. Resultado do MVP
+
+> Ver seção 0 (Amendment) e ADR 0005. "Selecionar Explorer" abaixo deve ser
+> lido como "hover sobre a região do Explorer", via `Theme Inspector: Turn
+> On`, não como abrir o Theme Color Explorer (que é a funcionalidade de
+> categorias, testada separadamente).
 
 O MVP é considerado concluído quando:
 

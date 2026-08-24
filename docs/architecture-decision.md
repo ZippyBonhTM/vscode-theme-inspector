@@ -63,21 +63,53 @@ had no Node.js installed beforehand) since it was the current LTS at the
 time; this is a dev-machine convenience and does not change the declared
 floor.
 
-## Inspector strategy (FASE 0 research)
+## Two features: Hover Inspector (primary) + Theme Color Explorer (secondary)
+
+The product is two coexisting features, not one
+([docs/implementation-plan.md](implementation-plan.md) §0):
+
+1. **Hover Inspector** (primary) — move the mouse over the real Workbench,
+   see the region highlighted, see its Theme Color ID / computed style /
+   resolved color live. `Theme Inspector: Turn On` / `Turn Off`.
+2. **Theme Color Explorer** (secondary, already implemented) — search/browse
+   Theme Color IDs by category. `Theme Inspector: Open Theme Color Explorer`.
+   Available regardless of Hover Inspector's on/off state.
+
+### Theme Color Explorer strategy (FASE 0 research)
 
 Extensions run in a separate Extension Host process and cannot access the
 Workbench DOM; webviews are isolated pages and cannot either. There is no
-supported way to build a literal "point at a live UI element" picker.
-**There is also no public API to resolve a Theme Color ID to a color value**
-— `vscode.ColorTheme` only exposes `kind` — confirmed directly against
-`microsoft/vscode`'s `vscode.d.ts` (an earlier draft of this decision
-wrongly claimed such an API existed; see the correction at the top of
-[ADR 0004](adr/0004-inspector-strategy.md)). The only live resolution
-mechanism that actually exists is a webview reading its injected
-`--vscode-*` CSS variable for a given id. The Inspector resolves colors by
+supported way to build a literal "point at a live UI element" picker this
+way. **There is also no public API to resolve a Theme Color ID to a color
+value** — `vscode.ColorTheme` only exposes `kind` — confirmed directly
+against `microsoft/vscode`'s `vscode.d.ts` (an earlier draft of this
+decision wrongly claimed such an API existed; see the correction at the top
+of [ADR 0004](adr/0004-inspector-strategy.md)). The only live resolution
+mechanism available to the public API is a webview reading its injected
+`--vscode-*` CSS variable for a given id. The Explorer resolves colors by
 Theme Color ID (search/browse, not pixel-picking) through exactly that
 mechanism. See [ADR 0004](adr/0004-inspector-strategy.md) for the full
 evidence and the comparison of alternatives (A–F).
+
+### Hover Inspector strategy (validated, not yet implemented)
+
+A true live hover picker over the _real_ Workbench needs actual DOM access,
+which — per the above — no public API provides. The only technically
+verified path is the **Chrome DevTools Protocol**, attached to the
+Workbench's own renderer via `--remote-debugging-port` (a switch VS Code's
+own `src/main.ts` explicitly allowlists for persistent use via `argv.json`
+— not a random Electron flag, but still outside the Extension API's
+compatibility contract). This was **empirically validated this session**
+against a real, isolated, disposable VS Code instance: real
+`document.elementFromPoint` + `getComputedStyle` access, and real-time
+`mousemove` streaming via `Runtime.addBinding`, both confirmed working, then
+torn down. See [ADR 0005](adr/0005-hover-inspector-strategy.md) for the full
+investigation, the alternatives rejected (OS accessibility APIs — wrong
+data; the `EyeDropper` API — confirmed click-only by spec, no live hover
+callback), and the security/UX trade-offs (local RCE-shaped attack surface
+via the debug port; requires a full VS Code restart, not just reload;
+Desktop-only) that must be explicitly accepted before implementation
+proceeds — this ADR's status is "Proposed," not "Accepted."
 
 ## VS Code baseline
 
