@@ -57,4 +57,36 @@ suite('InspectorPanelController (real webview, empirical resolution check)', () 
       controller.dispose();
     }
   });
+
+  test('browsing a category resolves its members too', async function () {
+    this.timeout(20_000);
+
+    const controller = new InspectorPanelController();
+    try {
+      controller.open();
+
+      const resolved = await new Promise<{ id: string; cssValue: string | null }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('timed out waiting for onDidResolve')),
+            15_000,
+          );
+          const subscription = controller.onDidResolve((event) => {
+            if (event.id !== 'sideBar.background') return;
+            clearTimeout(timer);
+            subscription.dispose();
+            resolve(event);
+          });
+          controller.browseCategory('Side Bar');
+        },
+      );
+
+      assert.ok(
+        typeof resolved.cssValue === 'string' && resolved.cssValue.length > 0,
+        `expected a non-empty resolved CSS value for sideBar.background, got ${JSON.stringify(resolved.cssValue)}`,
+      );
+    } finally {
+      controller.dispose();
+    }
+  });
 });

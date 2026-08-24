@@ -12,11 +12,12 @@ function getNonce(): string {
 /**
  * Builds the HTML for the Inspector webview.
  *
- * The page renders a search box and a result list. Search itself is driven
- * by the extension host (see `InspectorPanelController`), but resolving a
- * Theme Color ID to an actual color happens right here, in the webview's
- * own script, by reading the `--vscode-<id-with-dashes>` CSS custom
- * property VS Code injects — the only place that value is available (see
+ * The page renders category chips and a search box; both search and
+ * category browsing are driven by the extension host (see
+ * `InspectorPanelController`). Resolving a Theme Color ID to an actual
+ * color happens right here, in the webview's own script, by reading the
+ * `--vscode-<id-with-dashes>` CSS custom property VS Code injects — the
+ * only place that value is available (see
  * docs/adr/0004-inspector-strategy.md).
  */
 export function getInspectorHtml(webview: vscode.Webview): string {
@@ -48,6 +49,30 @@ export function getInspectorHtml(webview: vscode.Webview): string {
       color: var(--vscode-input-foreground);
       border: 1px solid var(--vscode-input-border, transparent);
     }
+    #categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin: 0.5rem 0;
+    }
+    .category-chip {
+      background: var(--vscode-button-secondaryBackground, transparent);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+      border: 1px solid var(--vscode-widget-border, #8888);
+      border-radius: 999px;
+      padding: 0.1rem 0.6rem;
+      font-size: 0.85em;
+      cursor: pointer;
+    }
+    .category-chip:hover,
+    .category-chip.active {
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-background));
+    }
+    #hint,
+    #empty {
+      color: var(--vscode-descriptionForeground);
+      padding: 0.5rem 0;
+    }
     .result {
       display: flex;
       align-items: center;
@@ -68,6 +93,10 @@ export function getInspectorHtml(webview: vscode.Webview): string {
     .id {
       font-family: var(--vscode-editor-font-family, monospace);
     }
+    .category {
+      color: var(--vscode-descriptionForeground);
+      font-size: 0.8em;
+    }
     .description {
       color: var(--vscode-descriptionForeground);
       font-size: 0.9em;
@@ -86,12 +115,21 @@ export function getInspectorHtml(webview: vscode.Webview): string {
 </head>
 <body>
   <input id="search" type="text" placeholder="Search Theme Color IDs (e.g. sideBar, editor.background)…" />
+  <div id="categories"></div>
+  <div id="hint">Type to search, or pick a category above.</div>
+  <div id="empty" style="display: none;"></div>
   <div id="results"></div>
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const searchInput = document.getElementById('search');
+    const categoriesEl = document.getElementById('categories');
+    const hintEl = document.getElementById('hint');
+    const emptyEl = document.getElementById('empty');
     const resultsEl = document.getElementById('results');
+
+    let activeCategory = null;
+    let debounceTimer;
 
     function resolveCssValue(id) {
       const variable = '--vscode-' + id.replace(/\\./g, '-');
@@ -99,8 +137,38 @@ export function getInspectorHtml(webview: vscode.Webview): string {
       return value.length > 0 ? value : null;
     }
 
-    function render(results) {
+    function renderCategories(categories) {
+      categoriesEl.textContent = '';
+      for (const category of categories) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'category-chip';
+        chip.textContent = category;
+        chip.addEventListener('click', () => {
+          activeCategory = category;
+          searchInput.value = '';
+          highlightActiveCategory();
+          vscode.postMessage({ type: 'browseCategory', category });
+        });
+        categoriesEl.appendChild(chip);
+      }
+    }
+
+    function highlightActiveCategory() {
+      for (const chip of categoriesEl.querySelectorAll('.category-chip')) {
+        chip.classList.toggle('active', chip.textContent === activeCategory);
+      }
+    }
+
+    function renderResults(results) {
       resultsEl.textContent = '';
+      const hasQuery = searchInput.value.trim().length > 0 || activeCategory !== null;
+      hintEl.style.display = hasQuery ? 'none' : '';
+      emptyEl.style.display = hasQuery && results.length === 0 ? '' : 'none';
+      if (emptyEl.style.display !== 'none') {
+        emptyEl.textContent = 'No Theme Color IDs matched.';
+      }
+
       for (const result of results) {
         const cssValue = resolveCssValue(result.id);
         vscode.postMessage({ type: 'resolved', id: result.id, cssValue });
@@ -117,10 +185,14 @@ export function getInspectorHtml(webview: vscode.Webview): string {
         const idEl = document.createElement('div');
         idEl.className = 'id';
         idEl.textContent = result.id + (cssValue ? ' — ' + cssValue : ' (unresolved)');
+        const categoryEl = document.createElement('div');
+        categoryEl.className = 'category';
+        categoryEl.textContent = result.category;
         const descEl = document.createElement('div');
         descEl.className = 'description';
         descEl.textContent = result.description;
         meta.appendChild(idEl);
+        meta.appendChild(categoryEl);
         meta.appendChild(descEl);
 
         const copyIdBtn = document.createElement('button');
@@ -143,13 +215,20 @@ export function getInspectorHtml(webview: vscode.Webview): string {
 
     window.addEventListener('message', (event) => {
       const message = event.data;
-      if (message.type === 'searchResults') {
-        render(message.results);
+      if (message.type === 'categories') {
+        renderCategories(message.categories);
+      } else if (message.type === 'searchResults') {
+        renderResults(message.results);
       }
     });
 
     searchInput.addEventListener('input', () => {
-      vscode.postMessage({ type: 'search', query: searchInput.value });
+      activeCategory = null;
+      highlightActiveCategory();
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        vscode.postMessage({ type: 'search', query: searchInput.value });
+      }, 150);
     });
 
     vscode.postMessage({ type: 'ready' });

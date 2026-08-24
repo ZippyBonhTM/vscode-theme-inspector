@@ -19,8 +19,9 @@ const MAX_RESULTS = 200;
 
 /**
  * Owns the singleton "Theme Inspector" webview panel: creates/reveals it,
- * runs search against the Theme Color registry on the host side, and
- * handles the "copy id" / "copy JSON" actions reported back by the webview.
+ * runs search/category browsing against the Theme Color registry on the
+ * host side, and handles the "copy id" / "copy JSON" actions reported back
+ * by the webview.
  *
  * Color *resolution* itself does not happen here — it happens inside the
  * webview's own script, which is the only place `--vscode-*` CSS variables
@@ -68,7 +69,12 @@ export class InspectorPanelController {
 
   /** Sends a search query to the (already open) webview, as if the user had typed it. */
   search(query: string): void {
-    this.postSearchResults(query);
+    this.postResults(ThemeColorRegistry.search(query));
+  }
+
+  /** Selects a category in the (already open) webview, as if the user had clicked it. */
+  browseCategory(category: string): void {
+    this.postResults(ThemeColorRegistry.byCategory(category));
   }
 
   dispose(): void {
@@ -79,8 +85,18 @@ export class InspectorPanelController {
   private handleMessage(message: WebviewToHostMessage): void {
     switch (message.type) {
       case 'ready':
+        this.postMessage({ type: 'categories', categories: ThemeColorRegistry.categories() });
+        this.postResults([]);
+        return;
       case 'search':
-        this.postSearchResults(message.type === 'search' ? message.query : '');
+        // An empty query intentionally shows nothing rather than dumping
+        // all 900+ colors — the user searches or picks a category.
+        this.postResults(
+          message.query.trim().length === 0 ? [] : ThemeColorRegistry.search(message.query),
+        );
+        return;
+      case 'browseCategory':
+        this.postResults(ThemeColorRegistry.byCategory(message.category));
         return;
       case 'resolved':
         this.resolveEmitter.fire({ id: message.id, cssValue: message.cssValue });
@@ -94,12 +110,17 @@ export class InspectorPanelController {
     }
   }
 
-  private postSearchResults(query: string): void {
-    const results: ThemeColorSearchResult[] = ThemeColorRegistry.search(query)
+  private postResults(
+    results: readonly { id: string; category: string; description: string }[],
+  ): void {
+    const capped: ThemeColorSearchResult[] = results
       .slice(0, MAX_RESULTS)
       .map(({ id, category, description }) => ({ id, category, description }));
-    const outgoing: HostToWebviewMessage = { type: 'searchResults', results };
-    void this.panel?.webview.postMessage(outgoing);
+    this.postMessage({ type: 'searchResults', results: capped });
+  }
+
+  private postMessage(message: HostToWebviewMessage): void {
+    void this.panel?.webview.postMessage(message);
   }
 
   private copyJson(id: string, cssValue: string | null): void {
