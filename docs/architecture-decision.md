@@ -91,25 +91,29 @@ Theme Color ID (search/browse, not pixel-picking) through exactly that
 mechanism. See [ADR 0004](adr/0004-inspector-strategy.md) for the full
 evidence and the comparison of alternatives (A–F).
 
-### Hover Inspector strategy (validated, not yet implemented)
+### Hover Inspector strategy (decided)
 
-A true live hover picker over the _real_ Workbench needs actual DOM access,
-which — per the above — no public API provides. The only technically
-verified path is the **Chrome DevTools Protocol**, attached to the
-Workbench's own renderer via `--remote-debugging-port` (a switch VS Code's
-own `src/main.ts` explicitly allowlists for persistent use via `argv.json`
-— not a random Electron flag, but still outside the Extension API's
-compatibility contract). This was **empirically validated this session**
-against a real, isolated, disposable VS Code instance: real
-`document.elementFromPoint` + `getComputedStyle` access, and real-time
-`mousemove` streaming via `Runtime.addBinding`, both confirmed working, then
-torn down. See [ADR 0005](adr/0005-hover-inspector-strategy.md) for the full
-investigation, the alternatives rejected (OS accessibility APIs — wrong
-data; the `EyeDropper` API — confirmed click-only by spec, no live hover
-callback), and the security/UX trade-offs (local RCE-shaped attack surface
-via the debug port; requires a full VS Code restart, not just reload;
-Desktop-only) that must be explicitly accepted before implementation
-proceeds — this ADR's status is "Proposed," not "Accepted."
+A true live hover picker over the _real_ Workbench (Activity Bar, Side Bar
+chrome, Status Bar, Panel) needs actual DOM access, which no public API
+provides. The only technically verified path is the **Chrome DevTools
+Protocol**, attached to the Workbench's own renderer via
+`--remote-debugging-port` — empirically validated this session against a
+real, isolated, disposable VS Code instance (real access to
+`document.elementFromPoint` and `getComputedStyle`, and real-time
+`mousemove` streaming via `Runtime.addBinding`). This was presented to the
+user with its trade-offs made explicit — most importantly, an open local
+CDP port accepts arbitrary JavaScript execution in the Workbench — and
+**rejected**: the user chose not to accept that security exposure, even in
+exchange for full Workbench-wide coverage.
+
+**Chosen instead**: `vscode.languages.registerHoverProvider`, fully
+supported and risk-free, scoped to Theme Color ID references inside text
+documents (JSON/CSS/SCSS/LESS: `settings.json`, theme files, stylesheets).
+This means the Hover Inspector does not cover UI chrome outside the editor
+— an accepted, documented gap, not an oversight. See
+[ADR 0005](adr/0005-hover-inspector-strategy.md) for the full investigation
+(kept as prior art, including the CDP research, in case a future supported
+API changes the calculus) and the final decision.
 
 ## VS Code baseline
 

@@ -2,9 +2,12 @@
 
 ## Status
 
-Proposed — validated technically, **pending explicit user sign-off** on the
-security/UX trade-off before implementation begins (see Decision needed,
-below). Not yet implemented.
+**Decided.** The CDP-based approach (Strategy F) was validated technically
+and presented to the user with its security trade-off made explicit; the
+user **declined it**, choosing to keep the extension on fully supported
+APIs only, even though that means no hover coverage outside the text
+editor. See "Decision" at the end of this document for what was actually
+chosen and why the CDP investigation is kept here rather than deleted.
 
 ## Context
 
@@ -99,49 +102,76 @@ candidates rather than arbitrarily picking one. This reuses
 `ThemeColorCandidate`/`Confidence`/`ResolvedColor` from `packages/core`
 as-is — no new domain model needed.
 
-## Decision needed (not yet made)
+## Decision
 
-Given the above, a hover inspector over the real Workbench is technically
-achievable, but only through CDP — an internal mechanism, with real
-consequences that must be accepted knowingly:
+The CDP approach (Strategy F) was presented to the user with all four
+consequences below made explicit, and **rejected**:
 
 1. **Requires a full VS Code restart** (not just "Reload Window") the first
    time it's enabled, because Electron command-line switches are read once
-   at process start (`main.ts`), before any window exists. "Turn On" cannot
-   silently enable this on an already-running instance.
+   at process start (`main.ts`), before any window exists.
 2. **Security**: an open `--remote-debugging-port` accepts `Runtime.evaluate`
    — arbitrary JavaScript execution in the Workbench's renderer — from
    anything that can reach that local port. Binding to `127.0.0.1` and
    using a high, extension-chosen port mitigates but does not eliminate
    this; browser-based DNS-rebinding attacks against local CDP ports are a
    documented real-world attack class, which is exactly why Chrome/Electron
-   don't enable this by default. This must be opt-in, clearly explained,
-   and probably off by default even after "Turn On" is first configured.
+   don't enable this by default. **This was the deciding factor** — the
+   user chose not to accept this trade-off, even in exchange for full
+   Workbench-wide hover coverage.
 3. **Desktop-only**: no such switch/process model exists on vscode.dev,
-   Codespaces, or other web hosts. Must be feature-detected and degrade
-   gracefully (hover mode unavailable; Theme Color Explorer still works
-   everywhere, since it only uses the public API).
+   Codespaces, or other web hosts.
 4. **No compatibility guarantee**: `SUPPORTED_ELECTRON_SWITCHES` could be
    changed or removed by Microsoft at any time without notice, since it
    isn't part of the Extension API contract.
 
-**This ADR does not yet authorize implementation.** Given point 2
-especially, this is exactly the kind of decision `CLAUDE.md` requires be
-explained and confirmed rather than made silently. See the accompanying
-message to the user for the explicit choice being asked.
+**Chosen instead: `vscode.languages.registerHoverProvider` (Strategy C),
+scoped to Theme Color ID references in text.** This is fully supported, has
+none of the above risks, and needs no restart or opt-in flow — at the
+explicit cost of not covering the Activity Bar, Side Bar chrome, Status
+Bar, or Panel (only text _content_ inside editors). Concretely:
 
-## Consequences if approved
+- Registered for JSON/JSONC/CSS/SCSS/LESS documents (where Theme Color IDs
+  and `--vscode-*` variables actually appear in real files: `settings.json`
+  `workbench.colorCustomizations`, theme definition JSON, stylesheets).
+- On hover, the word/range under the cursor is matched against two
+  patterns: a dotted Theme Color ID (`sideBar.background`) or a
+  `--vscode-*` CSS custom property, reverse-mapped back to its id. Either
+  way the id is looked up in `@vscode-theme-inspector/theme-colors`'
+  `ThemeColorRegistry` — reusing it exactly as-is.
+- The hover shows the id, category, and description unconditionally (all
+  static registry data, no resolution needed). It does **not** show a live
+  resolved color inline — resolving requires the webview mechanism from
+  ADR 0004, which needs a webview to already be alive; forcing one open
+  just to answer a hover would be a surprising side effect (an editor tab
+  or sidebar panel appearing uninvited). Instead the hover includes a
+  trusted command link that opens/reveals the Theme Color Explorer
+  pre-searched on that exact id, where live resolution, the color swatch,
+  and Copy ID/JSON already work and are already tested.
+- `Theme Inspector: Turn On` / `Turn Off` gate a simple boolean the
+  provider checks (`provideHover` returns `undefined` when off) — trivial
+  to reason about, and "no highlight remains" is automatically true since
+  there's no custom highlight without an active hover response, beyond an
+  editor decoration that is explicitly cleared on Turn Off.
+- A small `TextEditorDecorationType` highlights the exact matched range
+  while its hover is showing (auto-cleared after a short delay, and
+  explicitly cleared on Turn Off), giving real, if editor-scoped, visual
+  highlight feedback — satisfying that part of the original request within
+  the supported surface.
 
-- `apps/vscode-extension` gains a CDP client (a small, dependency-light
-  WebSocket-based client — Node's built-in `WebSocket` global, verified
-  available, is sufficient; no need for `chrome-remote-interface` or
-  similar as a dependency) and an onboarding flow for the one-time
-  `argv.json` + restart setup.
+## Consequences
+
+- `apps/vscode-extension` gains a hover provider, a small highlight
+  decoration controller, an explicit on/off state, and a status bar item
+  reflecting it — no new runtime dependencies, no CDP client.
 - The existing Theme Color Explorer (`InspectorViewProvider`,
   `packages/theme-colors`, `packages/core`'s color engine and JSON
-  generator) is **unaffected and fully reused** — see the refactor section
-  for how the two features will share code.
-- `docs/implementation-plan.md` and `CLAUDE.md`'s "Do not invent VS Code
-  APIs" / "identify the risk explicitly" instructions are satisfied by this
-  document; no code depending on CDP should be written before this ADR's
-  Status changes from "Proposed" to "Accepted."
+  generator) is **unaffected and fully reused** by the hover feature (same
+  registry, same resolution/JSON-generation code, reached via a command
+  link instead of duplicated).
+- Coverage gap, accepted knowingly: hovering over the Activity Bar, Side
+  Bar chrome (not its content), Status Bar, or Panel UI itself shows
+  nothing, because none of that is text in an editor. If a future,
+  supported VS Code API closes this gap, this ADR should be revisited —
+  the CDP investigation above stays in this document as prior art, not
+  deleted, precisely so that work isn't repeated from scratch.
