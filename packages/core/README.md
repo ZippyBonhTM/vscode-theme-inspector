@@ -2,11 +2,14 @@
 
 Framework-agnostic core library for VS Code Theme Inspector.
 
-> **Bootstrap phase.** This package currently exports only an infrastructure
-> placeholder to validate the build/test/publish pipeline. Domain logic
-> (Theme Color registry, CSS variable parser, color resolver, JSON
-> generator) has not been implemented yet — see
-> [docs/implementation-plan.md](../../docs/implementation-plan.md).
+> **Early development.** Implements the color engine, the inspection models
+> (`ThemeColorCandidate`, `ResolvedColor`, `Confidence`, `ColorSource`), and
+> `workbench.colorCustomizations` JSON generation. It does **not** know how
+> to look up a Theme Color ID (see
+> [@vscode-theme-inspector/theme-colors](../theme-colors)) or how to talk to
+> VS Code (see [apps/vscode-extension](../../apps/vscode-extension)) — see
+> [docs/adr/0004-inspector-strategy.md](../../docs/adr/0004-inspector-strategy.md)
+> for why the Inspector is id-driven rather than a live element picker.
 
 ## Public API
 
