@@ -67,12 +67,17 @@ floor.
 
 Extensions run in a separate Extension Host process and cannot access the
 Workbench DOM; webviews are isolated pages and cannot either. There is no
-supported way to build a literal "point at a live UI element" picker. The
-Inspector instead resolves colors by Theme Color ID (search/browse, not
-pixel-picking) via the stable `ColorTheme.getColor()` API, corroborated by a
-webview reading the same id's injected `--vscode-*` CSS variable. See
-[ADR 0004](adr/0004-inspector-strategy.md) for the full evidence and the
-comparison of alternatives (A–F) that led to this.
+supported way to build a literal "point at a live UI element" picker.
+**There is also no public API to resolve a Theme Color ID to a color value**
+— `vscode.ColorTheme` only exposes `kind` — confirmed directly against
+`microsoft/vscode`'s `vscode.d.ts` (an earlier draft of this decision
+wrongly claimed such an API existed; see the correction at the top of
+[ADR 0004](adr/0004-inspector-strategy.md)). The only live resolution
+mechanism that actually exists is a webview reading its injected
+`--vscode-*` CSS variable for a given id. The Inspector resolves colors by
+Theme Color ID (search/browse, not pixel-picking) through exactly that
+mechanism. See [ADR 0004](adr/0004-inspector-strategy.md) for the full
+evidence and the comparison of alternatives (A–F).
 
 ## VS Code baseline
 
