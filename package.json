@@ -12,17 +12,19 @@
     "apps/*"
   ],
   "scripts": {
+    "build:theme-colors": "npm run build -w packages/theme-colors",
     "build:core": "npm run build -w packages/core",
     "build:extension": "npm run build -w apps/vscode-extension",
-    "build": "npm run build:core && npm run build:extension",
+    "build": "npm run build:theme-colors && npm run build:core && npm run build:extension",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:theme-colors": "npm run test -w packages/theme-colors",
     "test:core": "npm run test -w packages/core",
-    "test:extension": "npm run build:core && npm run build:extension && npm run test -w apps/vscode-extension",
-    "test": "npm run test:core && npm run test:extension"
+    "test:extension": "npm run build && npm run test -w apps/vscode-extension",
+    "test": "npm run test:theme-colors && npm run test:core && npm run test:extension"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

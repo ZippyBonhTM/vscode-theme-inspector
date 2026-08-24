@@ -23,6 +23,19 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Repo-maintenance scripts run directly under Node.js (not bundled),
+    // so they need Node globals that the TypeScript source files don't.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        fetch: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
   // Must stay last: turns off stylistic rules that conflict with Prettier.
   prettierConfig,
 );

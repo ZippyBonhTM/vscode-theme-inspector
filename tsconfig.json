@@ -5,7 +5,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@vscode-theme-inspector/core": ["packages/core/src/index.ts"]
+      "@vscode-theme-inspector/core": ["packages/core/src/index.ts"],
+      "@vscode-theme-inspector/theme-colors": ["packages/theme-colors/src/index.ts"]
     },
     "types": ["node", "vscode", "mocha"]
   },
