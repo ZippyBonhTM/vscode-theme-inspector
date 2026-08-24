@@ -2,15 +2,19 @@
 
 Official VS Code extension for the Theme Inspector project.
 
-> **Bootstrap phase.** This extension currently only registers a placeholder
-> command that confirms activation and wiring to `@vscode-theme-inspector/core`.
-> No inspection functionality exists yet — see
-> [docs/implementation-plan.md](../../docs/implementation-plan.md).
+> **Early development — POC.** Run **Theme Inspector: Open Inspector** from
+> the Command Palette to search Theme Color IDs and see their current
+> resolved color. There is no visual "point at a UI element" picker — see
+> [docs/adr/0004-inspector-strategy.md](../../docs/adr/0004-inspector-strategy.md)
+> for why, and for how resolution actually works (a webview reading its own
+> injected `--vscode-*` CSS variables — the only mechanism that exists for
+> this).
 
-This package is the **consumer** of `@vscode-theme-inspector/core`; it must
-not contain domain logic that belongs in the core (parsing, resolution,
-color math). Its responsibilities are activation, commands, UI, and
-integration with the VS Code Extension API.
+This package is the **consumer** of `@vscode-theme-inspector/core` and
+`@vscode-theme-inspector/theme-colors`; it must not contain domain logic
+that belongs in those packages (parsing, resolution, color math, registry
+lookups). Its responsibilities are activation, commands, the webview UI,
+and integration with the VS Code Extension API.
 
 ## Development
 

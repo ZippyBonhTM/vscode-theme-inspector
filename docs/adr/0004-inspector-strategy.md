@@ -119,11 +119,14 @@ it carries no color data itself.
   The adapter should keep exactly one long-lived webview for this purpose
   rather than creating one per lookup.
 - The raw value returned by `getComputedStyle` for a `--vscode-*` variable
-  is a CSS color string whose exact format (hex vs. `rgb()`/`rgba()`) needs
-  empirical confirmation inside a real Extension Development Host — it is
-  verified, not assumed, in the FASE 7 POC (`apps/vscode-extension`'s
-  integration tests exercise the real resolver against a real VS Code
-  instance).
+  was confirmed empirically, not assumed: the FASE 7 POC
+  (`apps/vscode-extension/src/test/extension.test.ts`) opens a real webview
+  in the Extension Development Host and reads `editor.background` back
+  through the actual message round trip. Observed value: `"#121314"` — a
+  plain 6-digit hex string, not `rgb()`/`rgba()`. `parseCssColor` in
+  `packages/core` still tries `rgb()`/`rgba()` as a fallback (some
+  translucent overlay colors may resolve that way), but hex is the
+  confirmed common case.
 - `Confidence` (implementation-plan §11) for MVP results is effectively
   always `"exact"` (resolved via the webview) or the candidate is simply
   not offered. `"likely"`/`"possible"` become meaningful once a DOM-adjacent

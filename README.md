@@ -4,16 +4,22 @@ An open source tool for visually inspecting the colors and Theme Color tokens
 behind the VS Code Workbench UI.
 
 > **Early development — architecture and APIs are subject to change.**
-> This project is currently in its bootstrap phase. No inspection features
-> exist yet; see [docs/implementation-plan.md](docs/implementation-plan.md)
+> A proof of concept is working: search Theme Color IDs and see their
+> currently resolved color via **Theme Inspector: Open Inspector**. There
+> is no visual element picker — see
+> [docs/adr/0004-inspector-strategy.md](docs/adr/0004-inspector-strategy.md)
+> for why. See [docs/implementation-plan.md](docs/implementation-plan.md)
 > for the roadmap.
 
 ## Project status
 
-This repository is being prepared for development: workspace layout, tooling,
-CI, and a minimal extension scaffold. The actual Theme Inspector
-functionality (visual element picker, Theme Color resolution, CSS variable
-parsing, JSON generation, etc.) has not been implemented yet.
+Working: a Theme Color ID registry (910 entries, generated from the
+official reference), a color engine (hex/`rgb()` parsing and formatting),
+`workbench.colorCustomizations` JSON generation, and a webview-based
+Inspector that resolves any known Theme Color ID to its live color. Not
+yet implemented: a visual "point at a UI element" picker (not possible with
+supported APIs — see the ADR above), per-theme-scoped overrides, and
+applying changes back to `settings.json`.
 
 ## Architecture
 
@@ -21,7 +27,8 @@ The project is organized as a monorepo with a clear dependency direction:
 
 ```text
 apps/vscode-extension  →  packages/core
-(official extension)      (reusable, VS Code-independent library)
+                       →  packages/theme-colors
+(official extension)      (reusable, VS Code-independent libraries)
 ```
 
 The official extension is a _consumer_ of the core library, never the other
@@ -34,10 +41,12 @@ See [docs/architecture-decision.md](docs/architecture-decision.md) and
 
 ```text
 apps/
-  vscode-extension/   Official VS Code extension (consumer of core)
+  vscode-extension/   Official VS Code extension (consumer of the packages below)
 packages/
-  core/                Framework-agnostic core library
+  core/                Color engine, inspection models, JSON generation
+  theme-colors/        Theme Color ID registry (generated from the official reference)
 docs/                  Planning and architectural documentation
+scripts/               Repo maintenance scripts (e.g. registry regeneration)
 .github/workflows/      CI
 ```
 

@@ -1,23 +1,27 @@
 import * as vscode from 'vscode';
 
-import { CORE_VERSION } from '@vscode-theme-inspector/core';
+import { InspectorPanelController } from './adapter/inspector-panel-controller';
 
 /**
  * Extension entry point.
  *
- * This is intentionally minimal during the bootstrap phase: it registers a
- * single command that confirms the extension activated and that it can
- * successfully import from `@vscode-theme-inspector/core`, validating the
- * `apps/vscode-extension` → `packages/core` dependency direction end to end.
+ * Registers the Theme Inspector command, which opens a webview that lets
+ * the user search Theme Color IDs and see their currently resolved colors
+ * (docs/adr/0004-inspector-strategy.md). All domain logic (registry lookup,
+ * color parsing, JSON generation) lives in
+ * `@vscode-theme-inspector/theme-colors` and `@vscode-theme-inspector/core`
+ * — this file only wires VS Code's API to them.
  */
 export function activate(context: vscode.ExtensionContext): void {
-  const disposable = vscode.commands.registerCommand('themeInspector.showStatus', () => {
-    void vscode.window.showInformationMessage(`Theme Inspector is active (core v${CORE_VERSION}).`);
+  const inspector = new InspectorPanelController();
+
+  const disposable = vscode.commands.registerCommand('themeInspector.openInspector', () => {
+    inspector.open();
   });
 
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(disposable, inspector);
 }
 
 export function deactivate(): void {
-  // No resources to clean up yet.
+  // Disposables are released via context.subscriptions; nothing else to do.
 }

@@ -16,8 +16,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "themeInspector.showStatus",
-        "title": "Theme Inspector: Show Status"
+        "command": "themeInspector.openInspector",
+        "title": "Theme Inspector: Open Inspector"
       }
     ]
   },
@@ -28,7 +28,8 @@
     "test": "vscode-test"
   },
   "dependencies": {
-    "@vscode-theme-inspector/core": "*"
+    "@vscode-theme-inspector/core": "*",
+    "@vscode-theme-inspector/theme-colors": "*"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
