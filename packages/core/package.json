@@ -1,0 +1,20 @@
+{
+  "name": "@vscode-theme-inspector/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Framework-agnostic core library for VS Code Theme Inspector: theme color resolution logic reusable outside the official extension.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}
