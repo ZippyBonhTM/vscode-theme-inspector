@@ -34,8 +34,20 @@
     },
     "commands": [
       {
-        "command": "themeInspector.openInspector",
-        "title": "Theme Inspector: Open Inspector"
+        "command": "themeInspector.turnOn",
+        "title": "Theme Inspector: Turn On"
+      },
+      {
+        "command": "themeInspector.turnOff",
+        "title": "Theme Inspector: Turn Off"
+      },
+      {
+        "command": "themeInspector.toggleInspector",
+        "title": "Theme Inspector: Toggle Inspector"
+      },
+      {
+        "command": "themeInspector.openThemeColorExplorer",
+        "title": "Theme Inspector: Open Theme Color Explorer"
       }
     ]
   },

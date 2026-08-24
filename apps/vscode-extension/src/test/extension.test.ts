@@ -1,23 +1,23 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import type { InspectorViewProvider } from '../adapter/inspector-view-provider';
+import type { ThemeInspectorApi } from '../extension';
 
-async function getActivatedInspector(): Promise<InspectorViewProvider> {
+async function getActivatedApi(): Promise<ThemeInspectorApi> {
   const extension = vscode.extensions.getExtension('vscode-theme-inspector.vscode-theme-inspector');
   assert.ok(extension, 'expected the extension to be discoverable by id');
-  const inspector = (await extension.activate()) as InspectorViewProvider;
-  assert.ok(inspector, 'expected activate() to return the InspectorViewProvider instance');
-  return inspector;
+  const api = (await extension.activate()) as ThemeInspectorApi;
+  assert.ok(api?.state, 'expected activate() to return { state, explorer }');
+  return api;
 }
 
 function waitForResolution(
-  inspector: InspectorViewProvider,
+  explorer: ThemeInspectorApi['explorer'],
   id: string,
 ): Promise<{ id: string; cssValue: string | null }> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`timed out waiting to resolve ${id}`)), 15_000);
-    const subscription = inspector.onDidResolve((event) => {
+    const subscription = explorer.onDidResolve((event) => {
       if (event.id !== id) return;
       clearTimeout(timer);
       subscription.dispose();
@@ -28,55 +28,119 @@ function waitForResolution(
 
 suite('Theme Inspector extension', () => {
   test('activates without throwing', async () => {
-    const inspector = await getActivatedInspector();
-    assert.ok(inspector);
+    const api = await getActivatedApi();
+    assert.ok(api);
   });
 
-  test('registers the themeInspector.openInspector command', async () => {
+  test('registers the expected Command Palette commands', async () => {
     const commands = await vscode.commands.getCommands(true);
-    assert.ok(
-      commands.includes('themeInspector.openInspector'),
-      'expected themeInspector.openInspector to be registered',
-    );
+    for (const command of [
+      'themeInspector.turnOn',
+      'themeInspector.turnOff',
+      'themeInspector.toggleInspector',
+      'themeInspector.openThemeColorExplorer',
+    ]) {
+      assert.ok(commands.includes(command), `expected ${command} to be registered`);
+    }
   });
 });
 
-suite('InspectorViewProvider (real webview view, empirical resolution check)', () => {
-  test('resolves a well-known Theme Color id to a real CSS color value', async function () {
-    // Bringing the view into visibility for the first time in a fresh
-    // Extension Development Host can be slow; the default Mocha timeout is
-    // too tight.
-    this.timeout(20_000);
+suite('Hover Inspector (registerHoverProvider, real Extension Development Host)', () => {
+  test('shows nothing while off, and Theme Color info once turned on', async () => {
+    const { state } = await getActivatedApi();
+    await vscode.commands.executeCommand('themeInspector.turnOff');
+    assert.strictEqual(state.isEnabled(), false);
 
-    const inspector = await getActivatedInspector();
-    await vscode.commands.executeCommand('themeInspector.view.focus');
-    await inspector.whenReady();
+    const document = await vscode.workspace.openTextDocument({
+      language: 'json',
+      content: '{ "workbench.colorCustomizations": { "sideBar.background": "#000000" } }',
+    });
+    const idIndex = document.getText().indexOf('sideBar.background');
+    const position = document.positionAt(idIndex + 1);
 
-    const resolvedPromise = waitForResolution(inspector, 'editor.background');
-    inspector.search('editor.background');
-    const resolved = await resolvedPromise;
-
-    assert.strictEqual(resolved.id, 'editor.background');
-    assert.ok(
-      typeof resolved.cssValue === 'string' && resolved.cssValue.length > 0,
-      `expected a non-empty resolved CSS value for editor.background, got ${JSON.stringify(resolved.cssValue)}`,
+    const whileOff = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      document.uri,
+      position,
     );
+    assert.strictEqual(whileOff.length, 0, 'expected no hover while the Hover Inspector is off');
+
+    await vscode.commands.executeCommand('themeInspector.turnOn');
+    assert.strictEqual(state.isEnabled(), true);
+
+    const whileOn = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      document.uri,
+      position,
+    );
+    assert.ok(whileOn.length > 0, 'expected a hover once the Hover Inspector is on');
+    const content = whileOn[0]?.contents
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n');
+    assert.ok(
+      content?.includes('sideBar.background'),
+      `expected hover content to mention the id, got: ${content}`,
+    );
+    assert.ok(
+      content?.includes('Side Bar'),
+      `expected hover content to mention the category, got: ${content}`,
+    );
+
+    await vscode.commands.executeCommand('themeInspector.turnOff');
   });
 
-  test('browsing a category resolves its members too', async function () {
+  test('resolves a --vscode-* CSS variable reference back to its Theme Color id', async () => {
+    await vscode.commands.executeCommand('themeInspector.turnOn');
+
+    const document = await vscode.workspace.openTextDocument({
+      language: 'css',
+      content: 'body { background: var(--vscode-sideBar-background); }',
+    });
+    const variableIndex = document.getText().indexOf('--vscode-sideBar-background');
+    const position = document.positionAt(variableIndex + 1);
+
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      'vscode.executeHoverProvider',
+      document.uri,
+      position,
+    );
+    assert.ok(hovers.length > 0, 'expected a hover for the CSS variable reference');
+    const content = hovers[0]?.contents
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n');
+    assert.ok(
+      content?.includes('sideBar.background'),
+      `expected the CSS variable to resolve back to the id, got: ${content}`,
+    );
+
+    await vscode.commands.executeCommand('themeInspector.turnOff');
+  });
+
+  test('toggleInspector flips the state', async () => {
+    const { state } = await getActivatedApi();
+    await vscode.commands.executeCommand('themeInspector.turnOff');
+    assert.strictEqual(state.isEnabled(), false);
+
+    await vscode.commands.executeCommand('themeInspector.toggleInspector');
+    assert.strictEqual(state.isEnabled(), true);
+
+    await vscode.commands.executeCommand('themeInspector.toggleInspector');
+    assert.strictEqual(state.isEnabled(), false);
+  });
+});
+
+suite('Hover -> Theme Color Explorer bridge', () => {
+  test("the hover's 'resolve live color' command reaches the real Explorer", async function () {
     this.timeout(20_000);
 
-    const inspector = await getActivatedInspector();
-    await vscode.commands.executeCommand('themeInspector.view.focus');
-    await inspector.whenReady();
-
-    const resolvedPromise = waitForResolution(inspector, 'sideBar.background');
-    inspector.browseCategory('Side Bar');
+    const { explorer } = await getActivatedApi();
+    const resolvedPromise = waitForResolution(explorer, 'editor.background');
+    await vscode.commands.executeCommand('themeInspector.searchInExplorer', 'editor.background');
     const resolved = await resolvedPromise;
 
     assert.ok(
       typeof resolved.cssValue === 'string' && resolved.cssValue.length > 0,
-      `expected a non-empty resolved CSS value for sideBar.background, got ${JSON.stringify(resolved.cssValue)}`,
+      `expected the bridged search to resolve a real color, got ${JSON.stringify(resolved.cssValue)}`,
     );
   });
 });
