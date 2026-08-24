@@ -1,0 +1,39 @@
+{
+  "name": "vscode-theme-inspector",
+  "displayName": "Theme Inspector",
+  "description": "Inspect and resolve VS Code Theme Color IDs behind the Workbench UI. Early development — architecture and functionality are subject to change.",
+  "version": "0.0.1",
+  "private": true,
+  "publisher": "vscode-theme-inspector",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "themeInspector.showStatus",
+        "title": "Theme Inspector: Show Status"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build",
+    "test": "vscode-test"
+  },
+  "dependencies": {
+    "@vscode-theme-inspector/core": "*"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0"
+  }
+}
