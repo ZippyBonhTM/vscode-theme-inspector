@@ -14,6 +14,24 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "themeInspector",
+          "title": "Theme Inspector",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "themeInspector": [
+        {
+          "type": "webview",
+          "id": "themeInspector.view",
+          "name": "Theme Inspector"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "themeInspector.openInspector",

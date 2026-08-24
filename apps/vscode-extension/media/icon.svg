@@ -1,0 +1,7 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Three overlapping color swatches. VS Code renders Activity Bar icons
+       as a monochrome mask, so the fill color here is not what's shown. -->
+  <rect x="2" y="10" width="8" height="8" rx="1.5" fill="#000000" />
+  <rect x="9" y="4" width="8" height="8" rx="1.5" fill="#000000" />
+  <rect x="14" y="12" width="8" height="8" rx="1.5" fill="#000000" />
+</svg>

@@ -14,22 +14,34 @@ import type {
   WebviewToHostMessage,
 } from '../webview/protocol';
 
+/** The view id declared under `contributes.views.themeInspector` in package.json. */
+export const INSPECTOR_VIEW_ID = 'themeInspector.view';
+
 /** Caps how many results are sent to the webview per search, for render performance. */
 const MAX_RESULTS = 200;
 
 /**
- * Owns the singleton "Theme Inspector" webview panel: creates/reveals it,
- * runs search/category browsing against the Theme Color registry on the
- * host side, and handles the "copy id" / "copy JSON" actions reported back
- * by the webview.
+ * Provides the "Theme Inspector" webview view, docked in its own Activity
+ * Bar container: runs search/category browsing against the Theme Color
+ * registry on the host side, and handles the "copy id" / "copy JSON"
+ * actions reported back by the webview.
  *
  * Color *resolution* itself does not happen here — it happens inside the
  * webview's own script, which is the only place `--vscode-*` CSS variables
- * are readable (docs/adr/0004-inspector-strategy.md). This controller only
+ * are readable (docs/adr/0004-inspector-strategy.md). This provider only
  * relays search results in and resolved values out.
  */
-export class InspectorPanelController {
-  private panel: vscode.WebviewPanel | undefined;
+export class InspectorViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
+  private view: vscode.WebviewView | undefined;
+
+  /**
+   * Whether the webview's own script has finished loading and told us it's
+   * ready (`{ type: 'ready' }`). Posting a message before that point is
+   * unreliable — `Webview.postMessage` can resolve `false` (silently
+   * dropped) if the page hasn't attached its message listener yet.
+   */
+  private ready = false;
+  private readonly readyEmitter = new vscode.EventEmitter<void>();
 
   /** Fires whenever the webview reports a resolved (or unresolved) color for an id. */
   readonly onDidResolve: vscode.Event<{ id: string; cssValue: string | null }>;
@@ -42,49 +54,57 @@ export class InspectorPanelController {
     this.onDidResolve = this.resolveEmitter.event;
   }
 
-  /** Creates the panel if it doesn't exist yet, or reveals the existing one. */
-  open(): vscode.WebviewPanel {
-    if (this.panel) {
-      this.panel.reveal();
-      return this.panel;
-    }
-
-    const panel = vscode.window.createWebviewPanel(
-      'themeInspector.inspector',
-      'Theme Inspector',
-      vscode.ViewColumn.Beside,
-      { enableScripts: true, retainContextWhenHidden: true },
-    );
-    panel.webview.html = getInspectorHtml(panel.webview);
-    panel.webview.onDidReceiveMessage((message: WebviewToHostMessage) => {
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = getInspectorHtml(webviewView.webview);
+    webviewView.webview.onDidReceiveMessage((message: WebviewToHostMessage) => {
       this.handleMessage(message);
     });
-    panel.onDidDispose(() => {
-      this.panel = undefined;
+    webviewView.onDidDispose(() => {
+      if (this.view === webviewView) {
+        this.view = undefined;
+        this.ready = false;
+      }
     });
 
-    this.panel = panel;
-    return panel;
+    this.view = webviewView;
   }
 
-  /** Sends a search query to the (already open) webview, as if the user had typed it. */
+  /**
+   * Resolves once the webview has signaled it's ready to receive messages
+   * (immediately, if it already has). `search`/`browseCategory` calls made
+   * before this resolves are not guaranteed to reach the webview.
+   */
+  whenReady(): Promise<void> {
+    if (this.ready) return Promise.resolve();
+    return new Promise((resolve) => {
+      const subscription = this.readyEmitter.event(() => {
+        subscription.dispose();
+        resolve();
+      });
+    });
+  }
+
+  /** Sends a search query to the (already resolved) view, as if the user had typed it. */
   search(query: string): void {
     this.postResults(ThemeColorRegistry.search(query));
   }
 
-  /** Selects a category in the (already open) webview, as if the user had clicked it. */
+  /** Selects a category in the (already resolved) view, as if the user had clicked it. */
   browseCategory(category: string): void {
     this.postResults(ThemeColorRegistry.byCategory(category));
   }
 
   dispose(): void {
-    this.panel?.dispose();
     this.resolveEmitter.dispose();
+    this.readyEmitter.dispose();
   }
 
   private handleMessage(message: WebviewToHostMessage): void {
     switch (message.type) {
       case 'ready':
+        this.ready = true;
+        this.readyEmitter.fire();
         this.postMessage({ type: 'categories', categories: ThemeColorRegistry.categories() });
         this.postResults([]);
         return;
@@ -120,7 +140,7 @@ export class InspectorPanelController {
   }
 
   private postMessage(message: HostToWebviewMessage): void {
-    void this.panel?.webview.postMessage(message);
+    void this.view?.webview.postMessage(message);
   }
 
   private copyJson(id: string, cssValue: string | null): void {

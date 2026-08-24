@@ -2,9 +2,10 @@
 
 Official VS Code extension for the Theme Inspector project.
 
-> **Early development — POC.** Run **Theme Inspector: Open Inspector** from
-> the Command Palette to search Theme Color IDs and see their current
-> resolved color. There is no visual "point at a UI element" picker — see
+> **Early development — POC.** Click the Theme Inspector icon in the
+> Activity Bar (or run **Theme Inspector: Open Inspector** from the Command
+> Palette) to search Theme Color IDs and see their current resolved color.
+> There is no visual "point at a UI element" picker — see
 > [docs/adr/0004-inspector-strategy.md](../../docs/adr/0004-inspector-strategy.md)
 > for why, and for how resolution actually works (a webview reading its own
 > injected `--vscode-*` CSS variables — the only mechanism that exists for

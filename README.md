@@ -4,9 +4,9 @@ An open source tool for visually inspecting the colors and Theme Color tokens
 behind the VS Code Workbench UI.
 
 > **Early development — architecture and APIs are subject to change.**
-> A proof of concept is working: search Theme Color IDs and see their
-> currently resolved color via **Theme Inspector: Open Inspector**. There
-> is no visual element picker — see
+> A proof of concept is working: click the Theme Inspector icon in the
+> Activity Bar to search Theme Color IDs and see their currently resolved
+> color. There is no visual element picker — see
 > [docs/adr/0004-inspector-strategy.md](docs/adr/0004-inspector-strategy.md)
 > for why. See [docs/implementation-plan.md](docs/implementation-plan.md)
 > for the roadmap.
