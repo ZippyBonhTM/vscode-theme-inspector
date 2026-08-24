@@ -63,6 +63,17 @@ had no Node.js installed beforehand) since it was the current LTS at the
 time; this is a dev-machine convenience and does not change the declared
 floor.
 
+## Inspector strategy (FASE 0 research)
+
+Extensions run in a separate Extension Host process and cannot access the
+Workbench DOM; webviews are isolated pages and cannot either. There is no
+supported way to build a literal "point at a live UI element" picker. The
+Inspector instead resolves colors by Theme Color ID (search/browse, not
+pixel-picking) via the stable `ColorTheme.getColor()` API, corroborated by a
+webview reading the same id's injected `--vscode-*` CSS variable. See
+[ADR 0004](adr/0004-inspector-strategy.md) for the full evidence and the
+comparison of alternatives (A–F) that led to this.
+
 ## VS Code baseline
 
 `apps/vscode-extension` declares `engines.vscode: ^1.90.0`. This is a
