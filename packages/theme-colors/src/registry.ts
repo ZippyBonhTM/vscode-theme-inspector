@@ -1,3 +1,4 @@
+import { cssVariableToThemeColorId } from './css-variable';
 import { THEME_COLORS } from './data/theme-colors.generated';
 import type { ThemeColorDefinition } from './types';
 
@@ -13,9 +14,11 @@ const categories = Array.from(new Set(THEME_COLORS.map((color) => color.category
  * process).
  *
  * This registry only knows about IDs and their metadata (category,
- * description) — it does not resolve colors. Resolving a specific ID to its
- * current color requires a running VS Code instance and belongs to the
- * extension (`vscode.window.activeColorTheme.getColor(id)`).
+ * description) — it does not resolve colors. There is no VS Code API that
+ * resolves a Theme Color ID to its current color value; resolving one
+ * requires a webview reading its own injected `--vscode-*` CSS variable
+ * (see [ADR 0004](../../../docs/adr/0004-inspector-strategy.md)) and
+ * belongs to the extension, not this package.
  */
 export const ThemeColorRegistry = {
   /** All known Theme Color definitions, in the order documented by VS Code. */
@@ -26,6 +29,15 @@ export const ThemeColorRegistry = {
   /** Look up a single Theme Color definition by its exact id, if known. */
   get(id: string): ThemeColorDefinition | undefined {
     return byId.get(id);
+  },
+
+  /**
+   * Look up a Theme Color definition by its `--vscode-*` CSS custom
+   * property name (e.g. `--vscode-editor-background`), if known.
+   */
+  getByCssVariable(variable: string): ThemeColorDefinition | undefined {
+    const id = cssVariableToThemeColorId(variable);
+    return id === undefined ? undefined : byId.get(id);
   },
 
   /** Whether `id` is a known Theme Color ID. */

@@ -6,5 +6,6 @@
  * implementation details and must not be imported directly.
  */
 
+export { cssVariableToThemeColorId, themeColorIdToCssVariable } from './css-variable';
 export { ThemeColorRegistry } from './registry';
 export type { ThemeColorDefinition } from './types';
